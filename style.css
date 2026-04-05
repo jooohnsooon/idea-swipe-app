@@ -108,22 +108,25 @@ body {
   padding: 32px 28px;
   cursor: grab;
   user-select: none;
+  touch-action: none; /* prevent scroll hijack during swipe */
   border: 1px solid var(--surface2);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  transition: transform 0.1s ease;
   will-change: transform;
 }
 .card:active { cursor: grabbing; }
 
+.card:first-child {
+  z-index: 2;
+  /* no transform = flat on top */
+}
 .card:nth-child(2) {
-  transform: scale(0.97) translateY(10px);
   z-index: 1;
+  transform: scale(0.97) translateY(12px);
 }
 .card:nth-child(3) {
-  transform: scale(0.94) translateY(20px);
   z-index: 0;
+  transform: scale(0.94) translateY(24px);
 }
-.card:first-child { z-index: 2; }
 
 .card-tag {
   display: inline-block;
@@ -217,20 +220,6 @@ body {
   border: 1px solid var(--good);
 }
 
-/* Flying animation */
-.card.fly-left {
-  animation: flyLeft 0.4s ease-in forwards;
-}
-.card.fly-right {
-  animation: flyRight 0.4s ease-in forwards;
-}
-
-@keyframes flyLeft {
-  to { transform: translateX(-120%) rotate(-20deg); opacity: 0; }
-}
-@keyframes flyRight {
-  to { transform: translateX(120%) rotate(20deg); opacity: 0; }
-}
 
 /* Action Buttons */
 .action-buttons {
