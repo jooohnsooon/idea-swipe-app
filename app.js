@@ -182,9 +182,8 @@ function renderCards() {
     return;
   }
 
-  // Show top 3 cards (top card last in DOM = visually on top with z-index)
-  const visible = deck.slice(0, 3);
-  [...visible].reverse().forEach(idea => {
+  // deck[0] = first-child = top card (CSS :first-child has highest z-index)
+  deck.slice(0, 3).forEach(idea => {
     cardStack.appendChild(createCardEl(idea));
   });
 
@@ -193,7 +192,7 @@ function renderCards() {
 }
 
 function getTopCard() {
-  return cardStack.querySelector('.card:last-child');
+  return cardStack.querySelector('.card:first-child');
 }
 
 // -------------------------------------------------------
@@ -203,10 +202,17 @@ let isDragging = false;
 let startX = 0;
 let startY = 0;
 let currentX = 0;
+let dragController = null; // AbortController to clean up listeners each card
 
 function attachDragToTopCard() {
+  // Remove all previous drag listeners before attaching new ones
+  if (dragController) { dragController.abort(); dragController = null; }
+
   const card = getTopCard();
   if (!card) return;
+
+  dragController = new AbortController();
+  const { signal } = dragController;
 
   const overlayGood = card.querySelector('.overlay-good');
   const overlayBad  = card.querySelector('.overlay-bad');
@@ -260,12 +266,12 @@ function attachDragToTopCard() {
     }
   }
 
-  card.addEventListener('mousedown',  onStart);
-  card.addEventListener('touchstart', onStart, { passive: true });
-  document.addEventListener('mousemove',  onMove);
-  document.addEventListener('touchmove',  onMove, { passive: true });
-  document.addEventListener('mouseup',    onEnd);
-  document.addEventListener('touchend',   onEnd);
+  card.addEventListener('mousedown',  onStart, { signal });
+  card.addEventListener('touchstart', onStart, { passive: true, signal });
+  document.addEventListener('mousemove',  onMove, { signal });
+  document.addEventListener('touchmove',  onMove, { passive: true, signal });
+  document.addEventListener('mouseup',    onEnd, { signal });
+  document.addEventListener('touchend',   onEnd, { signal });
 }
 
 // -------------------------------------------------------
@@ -274,6 +280,9 @@ function attachDragToTopCard() {
 function dismissCard(card, verdict) {
   const idea = deck[0];
   if (!idea) return;
+
+  // Stop drag listeners immediately
+  if (dragController) { dragController.abort(); dragController = null; }
 
   history.push({ idea, verdict });
   deck.shift();
@@ -285,12 +294,15 @@ function dismissCard(card, verdict) {
 
   card.addEventListener('animationend', () => {
     card.remove();
+    // Fill back up to 3 visible cards
+    const domCount = cardStack.querySelectorAll('.card').length;
+    for (let i = domCount; i < Math.min(3, deck.length); i++) {
+      cardStack.appendChild(createCardEl(deck[i]));
+    }
     updateStackStyles();
     if (deck.length === 0) {
       showEmpty();
     } else {
-      const newCard = createCardEl(deck[0]);
-      cardStack.appendChild(newCard);
       attachDragToTopCard();
     }
     updateProgress();
@@ -298,16 +310,10 @@ function dismissCard(card, verdict) {
 }
 
 function updateStackStyles() {
-  const cards = cardStack.querySelectorAll('.card');
-  cards.forEach((c, i) => {
+  // Clear inline transforms so CSS :nth-child rules take over cleanly
+  cardStack.querySelectorAll('.card').forEach(c => {
     c.style.transition = 'transform 0.3s ease';
-    if (i === cards.length - 1) {
-      c.style.transform = '';
-    } else if (i === cards.length - 2) {
-      c.style.transform = 'scale(0.97) translateY(10px)';
-    } else {
-      c.style.transform = 'scale(0.94) translateY(20px)';
-    }
+    c.style.transform  = '';
   });
 }
 
